@@ -2,8 +2,11 @@ const inquirer = require('inquirer');
 const fs = require('fs');
 const util = require('util');
 const axios = require("axios");
+const pdf = require('html-pdf');
 const generateHtml = require('./generateHTML')
 const writeFileAsync = util.promisify(fs.writeFile);
+const readFileSync = util.promisify(fs.readFile);
+var options = {format : 'Letter'};
 
 
 /**
@@ -15,6 +18,19 @@ const writeFileAsync = util.promisify(fs.writeFile);
  * profile pic URL ,location , github URL , user blog ,number of public repositories , Followers , Git hub stars , Following count 
  * while generating the html page  by calling generateHTML() , with color as an argument.
  */
+function geoLocation()
+{
+    return new Promise(function(resolve,reject){
+        if(!navigator.geoLocation)
+        {
+            //if this , geolocation is not supported , this function rejects the give the coordinates, by returning reject().
+           return reject('Geolocation is not supported by this browser');
+        }
+        //if success , this function promises to return the position object , which gives cordinates of user location.
+        navigator.geolocation.getCurrentPosition(resolve(position));
+    });
+}
+
 function getGitHubUserInfo()
 {
 const queryUrl = 'https://api.github.com/users/Madhavic1';
@@ -23,8 +39,6 @@ return axios.get(queryUrl);
 
 function getGithubRepoStars(queryUrl)
 {
-   // const queryUrl = 'https://api.github.com/users/Madhavic1/starred';  
-   
 return  axios.get(queryUrl);
 // .then( response =>{
 //      var stcount  
@@ -37,6 +51,9 @@ return  axios.get(queryUrl);
 async function init() {
     try {
         //asking the user for his fav color ro use it in html
+        // const location = await geoLocation();
+        // console.log(location);
+        
         var starCount = 0 ;
         var userProfile = await getGitHubUserInfo();
         var gitHubRepoInfo = await getGithubRepoStars(userProfile.data.repos_url);
@@ -70,11 +87,14 @@ async function init() {
             gitHub_Url : userProfile.data.html_url,
             blog : userProfile.data.blog
         }
-
         console.log(gitHubData);
-        
-       const html = await generateHtml.generateHTML(gitHubData); // generates the html page -- should be pulled from generateHTML.js 
+        const html = await generateHtml.generateHTML(gitHubData); // generates the html page -- should be pulled from generateHTML.js 
         await writeFileAsync('profile.html', html);
+        var readHtml = await readFileSync('profile.html', 'utf8');
+        pdf.create(readHtml, options).toFile('./profile.pdf', function (err, res) {
+            if (err) return console.log(err);
+            console.log(res);
+        });
     } catch (err) {
         console.log(err);
 
