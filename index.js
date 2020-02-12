@@ -2,67 +2,29 @@ const inquirer = require('inquirer');
 const fs = require('fs');
 const util = require('util');
 const axios = require("axios");
-const pdf = require('html-pdf');
 const generateHtml = require('./generateHTML')
-const writeFileAsync = util.promisify(fs.writeFile);
-const readFileSync = util.promisify(fs.readFile);
-var options = {format : 'Letter'};
-
+var convertFactory = require('electron-html-to');
 
 /**
  * Project flow:
- * 1. Ask the user for his favorite color
- * 2. pass the color as an argument  
- * 3. get the response from GitHUB API   (in generateHTML.js file)
- * 4. Use the below details from the API response: 
- * profile pic URL ,location , github URL , user blog ,number of public repositories , Followers , Git hub stars , Following count 
- * while generating the html page  by calling generateHTML() , with color as an argument.
+ * 1. Ask the user for his favorite color and github username
+ * 2. pass the  github username as an argument to getGitHubUserInfo function 
+ * 3. get the response from GitHUB API 
+ * 4. Use the API response and user's color choice to generateHtml content
+ * 5. Convert the html to pdf using 'electron-html-to' npm package
  */
-function geoLocation()
-{
-    return new Promise(function(resolve,reject){
-        if(!navigator.geoLocation)
-        {
-            //if this , geolocation is not supported , this function rejects the give the coordinates, by returning reject().
-           return reject('Geolocation is not supported by this browser');
-        }
-        //if success , this function promises to return the position object , which gives cordinates of user location.
-        navigator.geolocation.getCurrentPosition(resolve(position));
-    });
+
+function getGitHubUserInfo(userName) {
+    const queryUrl = `https://api.github.com/users/${userName}`;
+    return axios.get(queryUrl);
 }
 
-function getGitHubUserInfo()
-{
-const queryUrl = 'https://api.github.com/users/Madhavic1';
-return axios.get(queryUrl);
-}
-
-function getGithubRepoStars(queryUrl)
-{
-return  axios.get(queryUrl);
-// .then( response =>{
-//      var stcount  
-//     for(let i=0;i<response.data.length;i++)
-//         {
-//             starCount+=response.data[i].stargazers_count;
-//         } 
-//     });
+function getGithubRepoStars(queryUrl) {
+    return axios.get(queryUrl);
 }
 async function init() {
     try {
         //asking the user for his fav color ro use it in html
-        // const location = await geoLocation();
-        // console.log(location);
-        
-        var starCount = 0 ;
-        var userProfile = await getGitHubUserInfo();
-        var gitHubRepoInfo = await getGithubRepoStars(userProfile.data.repos_url);
-        for(let i=0;i<gitHubRepoInfo.data.length;i++)
-        {
-            starCount+=gitHubRepoInfo.data[i].stargazers_count;
-        }
-        //console.warn(gitHubStarCount);
-        
         const answer = await inquirer.prompt([
             {
                 type: 'list',
@@ -74,30 +36,73 @@ async function init() {
                     'pink',
                     'red'
                 ]
+            },
+            {
+                type: 'input',
+                message: 'What is your Github username?',
+                name: 'userName'
             }
-        ]); //prompts the user for his fav color -- should be pulled from generateHTML.js 
+        ]);
+        var starCount = 0;
+        var userProfile = await getGitHubUserInfo(answer.userName);
+        var gitHubRepoInfo = await getGithubRepoStars(userProfile.data.repos_url);
+
+        for (let i = 0; i < gitHubRepoInfo.data.length; i++) {
+            starCount += gitHubRepoInfo.data[i].stargazers_count;
+        }
+
+        //checking if name is null 
+        var name_github = (userProfile.data.name === null) ? answer.userName : `${userProfile.data.name}`;
+
+        //checking if the location is null from github response
+        var location_github = (userProfile.data.location === null) ? "" : `<i class="fa fa-location-arrow h4"></i>${userProfile.data.location}`;
+
+        //checking if the comapany is null in the response
+        var company_github = (userProfile.data.company === null) ? "" : ("Currently " + userProfile.data.company);
+
+        //checking if the bio is null in the response
+        var bio_github = (userProfile.data.bio === null) ? "" : userProfile.data.bio;
+
+        //checking if the blog is null from github response
+        var blog_github = (userProfile.data.blog === "") ? "" : `${userProfile.data.blog}`;
+
+        var blog_icon = (userProfile.data.blog === "") ? "" : `<i class="fa fa-blog h4">Blog</i>`;
 
         var gitHubData = {
-            public_repos : userProfile.data.public_repos,
-            followers : userProfile.data.followers,
-            following : userProfile.data.following,
-            color : answer.color,
-            githubStars : starCount,
-            profile_image : userProfile.data.avatar_url,
-            gitHub_Url : userProfile.data.html_url,
-            blog : userProfile.data.blog
+            name: name_github,
+            company: company_github,
+            public_repos: userProfile.data.public_repos,
+            followers: userProfile.data.followers,
+            following: userProfile.data.following,
+            color: answer.color,
+            githubStars: starCount,
+            profile_image: userProfile.data.avatar_url,
+            gitHub_Url: userProfile.data.html_url,
+            blog: blog_github,
+            blog_icon: blog_icon,
+            location_data: location_github,
+            location: userProfile.data.location,
+            bio: bio_github
         }
-        console.log(gitHubData);
         const html = await generateHtml.generateHTML(gitHubData); // generates the html page -- should be pulled from generateHTML.js 
-        await writeFileAsync('profile.html', html);
-        var readHtml = await readFileSync('profile.html', 'utf8');
-        pdf.create(readHtml, options).toFile('./profile.pdf', function (err, res) {
-            if (err) return console.log(err);
-            console.log(res);
+        var conversion = convertFactory({
+            converterPath: convertFactory.converters.PDF
+        });
+        conversion({ html: html }, function (err, result) {
+            if (err) {
+                return console.error(err);
+            }
+            console.log(result.numberOfPages);
+            console.log(result.logs);
+            result.stream.pipe(fs.createWriteStream('./DeveloperProfile.pdf'));
+            conversion.kill(); // necessary if you use the electron-server strategy, see bellow for details
         });
     } catch (err) {
         console.log(err);
-
+        console.log(err.response.status);
+        if (err.response.status === 404) {
+            console.log('No Such Github username exist!! Please enter a valid github user name');
+        }
     }
 }
 

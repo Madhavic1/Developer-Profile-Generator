@@ -35,6 +35,7 @@ const generateHTML = async function (data) {
       <meta name="viewport" content="width=device-width, initial-scale=1.0" />
       <meta http-equiv="X-UA-Compatible" content="ie=edge" />
       <link rel="stylesheet" href="https://use.fontawesome.com/releases/v5.8.1/css/all.css"/>
+      
       <link href="https://fonts.googleapis.com/css?family=BioRhyme|Cabin&display=swap" rel="stylesheet">
       <title>Document</title>
       <style>
@@ -181,12 +182,12 @@ const generateHTML = async function (data) {
             <header class="photo-header">
                 <img src=${data.profile_image} alt="Madhavi's pic">
                 <h1>Hi!</h1>
-                <h2>My name is Madhavi Mullapudi!</h2>
-                <h3>Currently Student @ University of Washington , WA</h3>
+                <h2>My name is ${data.name}</h2>
+                <h3> ${data.company}</h3>
                 <nav class="links-nav">
-                    <a href="#" class="nav-link"><i class="fa fa-location-arrow h4"></i> Seattle,WA</a>
-                    <a href=${data.gitHub_Url} class="nav-link"><i class="fa fa-github h4"></i>GitHub</a>
-                    <a href=${data.blog} class="nav-link"><i class="fa fa-blog h4">Blog</i></a>
+                    <a href="https://www.google.com/maps/place/${data.location}" class="nav-link">${data.location_data}</a>
+                    <a href=${data.gitHub_Url} class="nav-link"><i class="fab fa-github-alt"></i></i>GitHub</a>
+                    <a href='${data.blog}' class="nav-link">${data.blog_icon}</a>
                 </nav>
             </header>
             <main>
@@ -194,20 +195,20 @@ const generateHTML = async function (data) {
                 <div class="container">
                   <div class="row">
                     <div class="col">
-                      <h5>I learn to code and build things</h5> 
+                      <h5>${data.bio}</h5> 
                     </div>
                   </div>
                   <div class="row">
                     <div class="col">
                       <div class="card">
-                        Public Repositories
-                        <span>${data.public_repos}</span>
+                      <p>Public Repositories</p>
+                        <p>${data.public_repos}</p>
                       </div>
                     </div>
                     <div class="col">
                       <div class="card">
-                        Followers
-                        <span>${data.followers}</span>
+                        <p>Followers</p>
+                        <p>${data.followers}</p>
                       </div>
                     </div>
                   </div>
@@ -215,14 +216,14 @@ const generateHTML = async function (data) {
                   <div class="row">
                     <div class="col">
                       <div class="card">
-                        GitHub Stars
-                        <span>${data.githubStars}</span>
+                        <p>GitHub Stars</p>
+                        <p>${data.githubStars}</p>
                       </div>
                     </div>
                     <div class="col">
                       <div class="card">
-                        Following
-                        <span>${data.following}</span>
+                        <p>Following</p>
+                        <p>${data.following}</p>
                       </div>
                     </div>
                   </div>
