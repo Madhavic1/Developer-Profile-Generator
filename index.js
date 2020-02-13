@@ -92,8 +92,6 @@ async function init() {
             if (err) {
                 return console.error(err);
             }
-            console.log(result.numberOfPages);
-            console.log(result.logs);
             result.stream.pipe(fs.createWriteStream('./DeveloperProfile.pdf'));
             conversion.kill(); // necessary if you use the electron-server strategy, see bellow for details
         });
